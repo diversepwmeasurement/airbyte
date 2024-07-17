@@ -1,48 +1,56 @@
-name: Approve and Merge Command Dispatch
-on:
-  issue_comment:
-    types: [created]
 jobs:
   approveAndMergeDispatch:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Auto Approve Slash Command Dispatch
-        uses: peter-evans/slash-command-dispatch@v3
-        id: scd
-        with:
-          token: ${{ secrets.GH_PAT_APPROVINGTON_OCTAVIA }}
-          permission: admin
-          issue-type: pull-request
-          repository: airbytehq/airbyte-platform-internal
-          dispatch-type: repository
-          commands: |
-            approve-and-merge
+    - continue-on-error: true
+      id: scd
+      name: Auto Approve Slash Command Dispatch
+      uses: peter-evans/slash-command-dispatch@v3
+      with:
+        commands: 'approve-and-merge
 
-      - name: Edit comment with error message
-        if: steps.scd.outputs.error-message
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          comment-id: ${{ github.event.comment.id }}
-          body: |
-            > Error!: ${{ steps.scd.outputs.error-message }}
+          '
+        dispatch-type: repository
+        issue-type: pull-request
+        permission: admin
+        repository: airbytehq/airbyte-platform-internal
+        token: ${{ secrets.GH_PAT_APPROVINGTON_OCTAVIA }}
+    - continue-on-error: true
+      if: steps.scd.outputs.error-message
+      name: Edit comment with error message
+      uses: peter-evans/create-or-update-comment@v1
+      with:
+        body: '> Error!: ${{ steps.scd.outputs.error-message }}
 
-      - name: Checkout Airbyte
-        id: checkout
-        if: failure() || steps.scd.outputs.error-message
-        uses: actions/checkout@v2
+          '
+        comment-id: ${{ github.event.comment.id }}
+    - continue-on-error: true
+      id: checkout
+      if: failure() || steps.scd.outputs.error-message
+      name: Checkout Airbyte
+      uses: actions/checkout@v2
+    - continue-on-error: true
+      id: repo_admins
+      if: failure() || steps.scd.outputs.error-message
+      name: Run get_repo_admins.sh
+      run: 'echo "REPO_ADMINS=$(./tools/bin/get_repo_admins.sh ${{ secrets.GH_PAT_APPROVINGTON_OCTAVIA
+        }} airbytehq/airbyte)" >> $GITHUB_ENV
 
-      - name: Run get_repo_admins.sh
-        if: failure() || steps.scd.outputs.error-message
-        id: repo_admins
-        run: |
-          echo "REPO_ADMINS=$(./tools/bin/get_repo_admins.sh ${{ secrets.GH_PAT_APPROVINGTON_OCTAVIA }} airbytehq/airbyte)" >> $GITHUB_ENV
+        '
+    - continue-on-error: true
+      if: failure() || steps.scd.outputs.error-message
+      name: Edit comment with repo admins
+      uses: peter-evans/create-or-update-comment@v1
+      with:
+        body: '>
 
-      - name: Edit comment with repo admins
-        if: failure() || steps.scd.outputs.error-message
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          comment-id: ${{ github.event.comment.id }}
-          body: |
-            >
-            > Important: This command can only be run by one of the repository admins:
-            > ${{ env.REPO_ADMINS }}
+          > Important: This command can only be run by one of the repository admins:
+
+          > ${{ env.REPO_ADMINS }}
+
+          '
+        comment-id: ${{ github.event.comment.id }}
+name: Approve and Merge Command Dispatch
+on:
+  repository_dispatch:
+    types: trigger-ga___approve-and-merge-dispatch.yml

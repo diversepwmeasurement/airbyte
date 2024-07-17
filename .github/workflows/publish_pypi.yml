@@ -1,16 +1,11 @@
-name: Publish connectors to PyPI
-
-on:
-  workflow_dispatch:
-    inputs:
-      runs-on:
-        type: string
-        default: ci-runner-connector-publish-large-dagger-0-9-5
-        required: true
-
 jobs:
   no-op:
     name: No-op
-    runs-on: ${{ inputs.runs-on || 'ci-runner-connector-publish-large-dagger-0-9-5' }}
+    runs-on: self-hosted
     steps:
-      - run: echo 'hi!'
+    - continue-on-error: true
+      run: echo 'hi!'
+name: Publish connectors to PyPI
+on:
+  repository_dispatch:
+    types: trigger-ga___publish_pypi.yml
